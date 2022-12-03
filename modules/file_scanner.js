@@ -50,7 +50,7 @@ function scanDir(dirname) {
                         if (prvfile.name === filedata.name) {
                             filedata.isInDb = true;
                             if (prvfile.stat.ctime != filedata.stat.ctime || prvfile.stat.size != filedata.stat.size) {
-                                //TODO update file data in database
+                                db_connector.db.query('UPDATE ' + config.settings.db_tbl + ' SET size=' + filedata.stat.size + ', ctime="' + (filedata.stat.ctime.toISOString()).replace(/\....Z$/, "") + '" WHERE path="' + filedata.name + '"');
                                 break;
                             }
                         }
