@@ -14,6 +14,9 @@ function readSettings() {
         fs.readFile("./settings.json", function(err, data) {
             if (data != null) {
                 module.exports.settings = JSON.parse(data);
+                for (let i = 0; i < module.exports.settings.scan_dirs.length; i++) {
+                    module.exports.settings.scan_dirs[i] = module.exports.settings.scan_dirs[i].replace(/\/$/, "");
+                }
                 resolve();
             } else {
                 reject();
@@ -25,6 +28,9 @@ function readSettings() {
 function createSettings() {
     return new Promise((resolve, reject) => {
         module.exports.settings = {
+            db_hst: "127.0.0.1",
+            db_nme: "files",
+            db_tbl: "filedata",
             db_usr: "",
             db_pwd: "",
             scan_dirs: ["."],
