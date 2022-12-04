@@ -17,6 +17,11 @@ function readSettings() {
                 for (let i = 0; i < module.exports.settings.scan_dirs.length; i++) {
                     module.exports.settings.scan_dirs[i] = module.exports.settings.scan_dirs[i].replace(/\/$/, "");
                 }
+                
+                for (let i = module.exports.settings.db_tbl.length; i < module.exports.settings.scan_dirs.length; i++) {
+                    console.log("using first table \"" + module.exports.settings.db_tbl[0] + "\" for " + module.exports.settings.scan_dirs[i]);
+                    module.exports.settings.db_tbl.push(module.exports.settings.db_tbl[0]);
+                }
                 resolve();
             } else {
                 reject();
@@ -30,14 +35,14 @@ function createSettings() {
         module.exports.settings = {
             db_hst: "127.0.0.1",
             db_nme: "files",
-            db_tbl: "filedata",
+            db_tbl: ["filedata"],
             db_usr: "",
             db_pwd: "",
             scan_dirs: ["."],
             api_enabled: false,
             api_port: 8086,
             scheduler_enabled: true,
-            scheduler_interval_sec: 300
+            scheduler_interval_sec: [300]
             
         }
         writeSettingsToFile().then( () => {
