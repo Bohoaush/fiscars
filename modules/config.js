@@ -38,6 +38,11 @@ function createSettings() {
             db_tbl: ["filedata"],
             db_usr: "",
             db_pwd: "",
+            /*db_filencol: "fs_file",
+            db_statecol: "fs_status",
+            db_versicol: "fs_version",
+            db_updtmcol: "fs_update",
+            db_fsizecol: "fs_size",*/
             scan_dirs: ["."],
             api_enabled: false,
             api_port: 8086,
