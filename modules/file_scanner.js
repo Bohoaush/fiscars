@@ -1,9 +1,12 @@
 var fs = require("fs");
 var db_connector = require("./db_connector.js");
+var logger = require("./logger.js");
+
+const mdnm = "file_scanner";
 
 
 class FileScanner {
-    constructor(dir, table) {
+    constructor(dir, table, dbupdwait) {
         var prevstate = {files: []};
         var currstate;
         
@@ -12,20 +15,19 @@ class FileScanner {
         
         var checkedAgainstDatabase = false;
         
-        console.log("table - " + table);
-        
         this.scanFiles = function() {
             return new Promise(resolve => {
                 if (!checkedAgainstDatabase) {
                     db_connector.db.query(("SELECT * FROM " + table), (err, result, fields) => {
-                        if (err) throw err; //TODO
-                        console.log(result);
+                        if (err) {
+                            logger.log(mdnm, "ERROR", "Error connecting to database. The application will exit.");
+                            throw err;
+                        }
                         for (let row of result) {
                             var dbfiledata = {};
                             dbfiledata.name = row.fs_file;
                             dbfiledata.stat = {};
                             dbfiledata.stat.ctimeMs = row.fs_ctimems;
-                            console.log(dbfiledata.stat.ctimeMs);
                             dbfiledata.stat.ctime = row.fs_ctime;
                             dbfiledata.stat.ctime.setHours(dbfiledata.stat.ctime.getHours() - ((new Date().getTimezoneOffset())/60));
                             dbfiledata.stat.size = row.fs_size;
@@ -52,8 +54,9 @@ class FileScanner {
         function scanDir(dirname) {
             dirname = (dirname + "/");
             fs.readdir(dirname, {withFileTypes: true}, (err, filenames) => {
-                if (err) throw err; //TODO
-                console.log(filenames);
+                if (err) {
+                    logger.log((mdnm), "ERROR", ("Failed to obtain directory listing at " + dirname + "\n" + err));
+                }
                 for (let prvfile of prevstate.files) {
                     
                 }
@@ -74,7 +77,6 @@ class FileScanner {
         
         function comparePreviousWithCurrent() {
             for (let prvfile of prevstate.files) {
-                console.log("first");
                 prvfile.isInCurr = false;
                 for (let currfile of currstate.files) {
                     if (prvfile.name === currfile.name) {
@@ -96,20 +98,18 @@ class FileScanner {
                     if (prvfile.statefordb != "deleted") {
                         prvfile.statefordb = "deleted";
                         pendingUpdate.push(prvfile);
-                        console.log("deteled " + prvfile.name);
                     }
                     currstate.files.push(prvfile);
                 }
             }
             for (let currfile of currstate.files) {
-                console.log(currfile);
                 if (!currfile.isInDb) {
                     currfile.statefordb = "new";
                     currfile.versifordb = 1;
                     pendingAdd.push(currfile);
                 }
             }
-            setTimeout(updateDb, 1000); //TODO change to 90000 (90s) after testing
+            setTimeout(updateDb, (dbupdwait*1000));
         }
         
         function updateDb() {
@@ -123,6 +123,7 @@ class FileScanner {
                         if (filetodb === adpend) {
                             currStat = false;
                             pendingAdd.splice(pendingAdd.idnexOf(adpend), 1);
+                            logger.log(mdnm, "WARNING", ("File " + filetodb.name + "was deleted before adding to database."));
                         }
                     }
                 }
@@ -132,6 +133,7 @@ class FileScanner {
                 ) {
                     db_connector.db.query('UPDATE ' + table + ' SET fs_status="' + filetodb.statefordb + '", fs_version=' + filetodb.versifordb + ', fs_update="' + (new Date().toISOString()).replace(/\....Z$/, "") + '", fs_size=' + filetodb.stat.size + ', fs_ctime="' + (filetodb.stat.ctime.toISOString()).replace(/\....Z$/, "") + '", fs_ctimems=' + filetodb.stat.ctimeMs + ' WHERE fs_file="' + filetodb.name + '"');
                     pendingUpdate.splice(pendingUpdate.indexOf(filetodb), 1);
+                    logger.log(mdnm, "INFO", ("Updated file " + filetodb.name + " in database"));
                     
                 }
             }
@@ -149,6 +151,7 @@ class FileScanner {
                     + filetodb.name + '", "' + filetodb.statefordb + '", 1, "' + (new Date().toISOString()).replace(/\....Z$/, "") + '", ' + filetodb.stat.size + ', "' + (filetodb.stat.ctime.toISOString()).replace(/\....Z$/, "") + '", ' + filetodb.stat.ctimeMs + ')');
                     filetodb.isInDb = true;
                     pendingAdd.splice(pendingAdd.indexOf(filetodb), 1);
+                    logger.log(mdnm, "INFO", ("Added file " + filetodb.name + " to database"));
                 }
             }
         }

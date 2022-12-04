@@ -1,15 +1,24 @@
 var scanner = require("./file_scanner.js");
 var config = require("./config.js");
+var logger = require("./logger.js");
+
+const mdnm = "scheduler";
 
 scanners = [];
 
 function startAll() {
     for (dir of config.settings.scan_dirs) {
-        console.log(("dir - " + dir + "\ntbl - " + config.settings.db_tbl[config.settings.scan_dirs.indexOf(dir)]));
-        scanners.push(new scanner.FileScanner(dir, config.settings.db_tbl[config.settings.scan_dirs.indexOf(dir)]));
+        scanners.push(
+            new scanner.FileScanner(
+                dir, 
+                config.settings.db_tbl[config.settings.scan_dirs.indexOf(dir)],
+                config.settings.update_db_wait_sec[config.settings.scan_dirs.indexOf(dir)]
+            )
+        );
+        logger.log(mdnm, "INFO", ("Initialized file scanner for " + dir));
     }
     for (filescanner of scanners) {
-        start(filescanner, config.settings.scheduler_interval_sec[scanners.indexOf(filescanner)]);
+        start(filescanner, config.settings.scheduler_intervals_sec[scanners.indexOf(filescanner)]);
     }
 }
 
@@ -31,10 +40,11 @@ module.exports = {
 }
 
 function start(filescanner, seconds) {
-    console.log(filescanner);
     setInterval(filescanner.scanFiles, (seconds * 1000));
+    logger.log(mdnm, "INFO", ("Scheduled file scanner " + scanners.indexOf(filescanner) + " every " + seconds));
 }
 
 function stop(filescanner) {
     clearInterval(filescanner.scanFiles);
+    logger.log(mdnm, "INFO", ("Cleared schedule of file scanner " + scanners.indexOf(filescanner)));
 }

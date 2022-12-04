@@ -1,4 +1,7 @@
 var fs = require("fs");
+var logger = require("./logger");
+
+const mdnm = "config";
 
 var settings;
 
@@ -12,18 +15,30 @@ module.exports = {
 function readSettings() {
     return new Promise((resolve, reject) => {
         fs.readFile("./settings.json", function(err, data) {
+            if (err) {
+                logger.log(mdnm, "ERROR", ("Error reading config file: " + err))
+            }
             if (data != null) {
                 module.exports.settings = JSON.parse(data);
                 for (let i = 0; i < module.exports.settings.scan_dirs.length; i++) {
                     module.exports.settings.scan_dirs[i] = module.exports.settings.scan_dirs[i].replace(/\/$/, "");
                 }
                 
-                for (let i = module.exports.settings.db_tbl.length; i < module.exports.settings.scan_dirs.length; i++) {
-                    console.log("using first table \"" + module.exports.settings.db_tbl[0] + "\" for " + module.exports.settings.scan_dirs[i]);
-                    module.exports.settings.db_tbl.push(module.exports.settings.db_tbl[0]);
+                var fixIncompleteConfig = [
+                    module.exports.settings.db_tbl,
+                    module.exports.settings.scheduler_intervals_sec,
+                    module.exports.settings.update_db_wait_sec
+                ]
+                for (let fixIncompleteConfigPart of fixIncompleteConfig) {
+                    for (let i = fixIncompleteConfigPart.length; i < module.exports.settings.scan_dirs.length; i++) {
+                        logger.log(mdnm, "WARNING", ("Using first value \"" + fixIncompleteConfigPart[0] + "\" for " + module.exports.settings.scan_dirs[i]));
+                        module.exports.settings.db_tbl.push(fixIncompleteConfigPart[0]);
+                    }
                 }
+                logger.log(mdnm,"INFO", "Loaded config file");
                 resolve();
             } else {
+                logger.log(mdnm, "ERROR", "Couldn't read config file");
                 reject();
             }
         });
@@ -38,21 +53,18 @@ function createSettings() {
             db_tbl: ["filedata"],
             db_usr: "",
             db_pwd: "",
-            /*db_filencol: "fs_file",
-            db_statecol: "fs_status",
-            db_versicol: "fs_version",
-            db_updtmcol: "fs_update",
-            db_fsizecol: "fs_size",*/
             scan_dirs: ["."],
             api_enabled: false,
             api_port: 8086,
             scheduler_enabled: true,
-            scheduler_interval_sec: [300]
-            
+            scheduler_intervals_sec: [300],
+            update_db_wait_sec: [90]
         }
         writeSettingsToFile().then( () => {
+            logger.log(mdnm, "WARNING", "Created new settings file");
             resolve();
         }).catch(err => {
+            logger.log(mdnm, "ERROR", "Cloudn't write new settings!");
             reject(err);
         });
     });

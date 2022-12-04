@@ -1,5 +1,8 @@
 var mysql = require('mysql');
 var config = require('./config.js');
+var logger = require('./logger.js');
+
+const mdnm = "db_connector";
 
 var db;
 
@@ -16,9 +19,11 @@ function openConnection() {
     });
     
     module.exports.db.connect(function(err) {
-        if (err) throw err; //TODO
-        //Connection established
-        console.log("connected db");
+        if (err) {
+            logger.log(mdnm, "ERROR", "Failed connecting to database, the application will exit");
+            throw err;
+        }
         module.exports.db.query("USE " + config.settings.db_nme);
+        logger.log(mdnm, "INFO", "Connected to database");
     });
 }
