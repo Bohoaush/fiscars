@@ -15,27 +15,34 @@ class FileScanner {
         console.log("table - " + table);
         
         this.scanFiles = function() {
-            if (!checkedAgainstDatabase) {
-                db_connector.db.query(("SELECT * FROM " + table), (err, result, fields) => {
-                    if (err) throw err; //TODO
-                    console.log(result);
-                    for (let row of result) {
-                        var dbfiledata = {};
-                        dbfiledata.name = row.fs_file;
-                        dbfiledata.stat = {};
-                        dbfiledata.stat.ctime = row.fs_ctime;
-                        dbfiledata.stat.size = row.fs_size;
-                        dbfiledata.updtmfordb = row.fs_update;
-                        dbfiledata.statefordb = row.fs_state;
-                        dbfiledata.versifordb = row.fs_version;
-                        dbfiledata.isInDb = true;
-                        prevstate.files.push(dbfiledata);
-                    }
-                    checkedAgainstDatabase = true;
-                });
-            } else prevstate = currstate; //TODO fix!
-            currstate = {files: []};
-            scanDir(dir);
+            return new Promise(resolve => {
+                if (!checkedAgainstDatabase) {
+                    db_connector.db.query(("SELECT * FROM " + table), (err, result, fields) => {
+                        if (err) throw err; //TODO
+                        console.log(result);
+                        for (let row of result) {
+                            var dbfiledata = {};
+                            dbfiledata.name = row.fs_file;
+                            dbfiledata.stat = {};
+                            dbfiledata.stat.ctime = row.fs_ctime;
+                            dbfiledata.stat.size = row.fs_size;
+                            dbfiledata.updtmfordb = row.fs_update;
+                            dbfiledata.statefordb = row.fs_state;
+                            dbfiledata.versifordb = row.fs_version;
+                            dbfiledata.isInDb = true;
+                            prevstate.files.push(dbfiledata);
+                        }
+                        checkedAgainstDatabase = true;
+                        resolve();
+                    });
+                } else {
+                    prevstate = currstate;
+                    resolve();
+                }
+                currstate = {files: []};
+            }).then( () => {
+                scanDir(dir);
+            });
         }
 
 
@@ -55,26 +62,6 @@ class FileScanner {
                         filedata.name = (dirname + file.name);
                         filedata.stat = fs.statSync(dirname + file.name);
                         filedata.isInDb = false;
-                        /*if (prevstate != undefined && prevstate.files != []) {
-                            for (let prvfile of prevstate.files) {
-                                if (prvfile.name === filedata.name) {
-                                    filedata.isInDb = true;
-                                    if (prvfile.stat.ctime.getTime() != filedata.stat.ctime.getTime() || prvfile.stat.size != filedata.stat.size) {
-                                        //console.log("\n\nupdating: " + filedata.name + "\nctime:\n" + filedata.stat.ctime.getTime() + "\n" + prvfile.stat.ctime.getTime() + "\nsize:\n" + filedata.stat.size + "\n" + prvfile.stat.size);
-                                        db_connector.db.query('UPDATE ' + table + ' SET size=' + filedata.stat.size + ', ctime="' + (filedata.stat.ctime.toISOString()).replace(/\....Z$/, "") + '" WHERE path="' + filedata.name + '"');
-                                        break;
-                                    }
-                                }
-                            }
-                            
-                            if (filedata.isInDb === false) {
-                                console.log("isInDb checked");
-                                db_connector.db.query('INSERT INTO ' + table + ' (path, size, ctime) VALUES ("' + filedata.name + '", ' + filedata.stat.size + ', "' + (filedata.stat.ctime.toISOString()).replace(/\....Z$/, "") + '")');
-                                filedata.isInDb = true;
-                            }
-                        } else {
-                            
-                        }*/
                         currstate.files.push(filedata);
                     }
                 }
@@ -84,18 +71,19 @@ class FileScanner {
         
         function comparePreviousWithCurrent() {
             for (let prvfile of prevstate.files) {
+                console.log("first");
                 prvfile.isInCurr = false;
                 for (let currfile of currstate.files) {
                     if (prvfile.name === currfile.name) {
                         currfile.isInDb = true;
                         prvfile.isInCurr = true;
-                        console.log("before");
+                        currfile.versifordb = prvfile.versifordb;
                         if (
                             prvfile.stat.ctime.getTime() != currfile.stat.ctime.getTime() || 
                             prvfile.stat.size != currfile.stat.size
                         ) {
                             currfile.statefordb = "update";
-                            currfile.fs_version++;
+                            currfile.versifordb++;
                             pendingUpdate.push(currfile);
                         }
                         break;
@@ -105,12 +93,13 @@ class FileScanner {
                     if (prvfile.statefordb != "deleted") {
                         prvfile.statefordb = "deleted";
                         pendingUpdate.push(prvfile);
+                        console.log("deteled " + prvfile.name);
                     }
                     currstate.files.push(prvfile);
                 }
             }
             for (let currfile of currstate.files) {
-                console.log("after");
+                console.log(currfile);
                 if (!currfile.isInDb) {
                     currfile.statefordb = "new";
                     pendingAdd.push(currfile);
@@ -121,16 +110,21 @@ class FileScanner {
         
         function updateDb() {
             for (let filetodb of pendingUpdate) {
-                let currStat = fs.statSync(filetodb.name);
+                let currStat;
+                if (fs.existsSync(filetodb.name)) {
+                    currStat = fs.statSync(filetodb.name);
+                } else if (filetodb.statefordb === "deleted") {
+                    currStat = filetodb.stat;
+                }
                 if (
                     filetodb.stat.ctime.getTime() === currStat.ctime.getTime() &&
                     filetodb.stat.size === currStat.size
                 ) {
-                    db_connector.db.query('UPDATE ' + table + ' SET fs_status="' + filetodb.statefordb + '", fs_version=' + filetodb.versifordb + ' fs_update="' + (new Date().toISOString()).replace(/\....Z$/, "") + '", fs_size=' + filetodb.stat.size + ', fs_ctime="' + (filetodb.stat.ctime.toISOString()).replace(/\....Z$/, "") + '" WHERE path="' + filetodb.name + '"');
+                    db_connector.db.query('UPDATE ' + table + ' SET fs_status="' + filetodb.statefordb + '", fs_version=' + filetodb.versifordb + ', fs_update="' + (new Date().toISOString()).replace(/\....Z$/, "") + '", fs_size=' + filetodb.stat.size + ', fs_ctime="' + (filetodb.stat.ctime.toISOString()).replace(/\....Z$/, "") + '" WHERE fs_file="' + filetodb.name + '"');
                 }
             }
+            pendingUpdate = [];
             for (let filetodb of pendingAdd) {
-                console.log("test");
                 let currStat = fs.statSync(filetodb.name);
                 if (
                     filetodb.stat.ctime.getTime() === currStat.ctime.getTime() &&
