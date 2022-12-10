@@ -46,32 +46,38 @@ class FileScanner {
                 }
                 currstate = {files: []};
             }).then( () => {
-                scanDir(dir);
+                scanDir(dir).then(dirname => {
+                    if (dirname === (dir + "/")) {
+                        comparePreviousWithCurrent();
+                    }
+                });
             });
         }
 
 
         function scanDir(dirname) {
-            dirname = (dirname + "/");
-            fs.readdir(dirname, {withFileTypes: true}, (err, filenames) => {
-                if (err) {
-                    logger.log((mdnm), "ERROR", ("Failed to obtain directory listing at " + dirname + "\n" + err));
-                }
-                for (let prvfile of prevstate.files) {
-                    
-                }
-                for (let file of filenames) {
-                    if (file.isDirectory()) {
-                        scanDir(dirname + file.name);
-                    } else {
-                        var filedata = {};
-                        filedata.name = (dirname + file.name);
-                        filedata.stat = fs.statSync(dirname + file.name);
-                        filedata.isInDb = false;
-                        currstate.files.push(filedata);
+            return new Promise(resolve => {
+                dirname = (dirname + "/");
+                fs.readdir(dirname, {withFileTypes: true}, (err, filenames) => {
+                    if (err) {
+                        logger.log((mdnm), "ERROR", ("Failed to obtain directory listing at " + dirname + "\n" + err));
                     }
-                }
-                comparePreviousWithCurrent();
+                    for (let prvfile of prevstate.files) {
+                        
+                    }
+                    for (let file of filenames) {
+                        if (file.isDirectory()) {
+                            scanDir(dirname + file.name);
+                        } else {
+                            var filedata = {};
+                            filedata.name = (dirname + file.name);
+                            filedata.stat = fs.statSync(dirname + file.name);
+                            filedata.isInDb = false;
+                            currstate.files.push(filedata);
+                        }
+                    }
+                    resolve(dirname);
+                });
             });
         }
         
