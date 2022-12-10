@@ -20,10 +20,11 @@ function openConnection() {
     
     module.exports.db.connect(function(err) {
         if (err) {
-            logger.log(mdnm, "ERROR", "Failed connecting to database, the application will exit");
-            throw err;
+            logger.log(mdnm, "ERROR", "Failed connecting to database, the application will exit: " + err);
+            setTimeout(function() {throw err;}, 1000);
+        } else {
+            module.exports.db.query("USE " + config.settings.db_nme);
+            logger.log(mdnm, "INFO", "Connected to database");
         }
-        module.exports.db.query("USE " + config.settings.db_nme);
-        logger.log(mdnm, "INFO", "Connected to database");
     });
 }
