@@ -46,7 +46,7 @@ function readSettings() {
     });
 }
 
-function createSettings() {
+function createSettings(shouldWriteToFile) {
     return new Promise((resolve, reject) => {
         module.exports.settings = {
             db_hst: "127.0.0.1",
@@ -62,13 +62,17 @@ function createSettings() {
             api_enabled: false,
             api_port: 8086
         }
-        writeSettingsToFile().then( () => {
-            logger.log(mdnm, "WARNING", "Created new settings file");
-            resolve();
-        }).catch(err => {
-            logger.log(mdnm, "ERROR", "Cloudn't write new settings!");
-            reject(err);
-        });
+        if ((!fs.existsSnyc("./settings.json")) || shouldWriteToFile) {
+            writeSettingsToFile().then( () => {
+                logger.log(mdnm, "WARNING", "Created new settings file");
+                resolve();
+            }).catch(err => {
+                logger.log(mdnm, "ERROR", "Cloudn't write new settings!");
+                reject(err);
+            });
+        } else {
+            
+        }
     });
 }
 
