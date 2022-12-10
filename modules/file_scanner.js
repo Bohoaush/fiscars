@@ -19,7 +19,7 @@ class FileScanner {
             return new Promise(resolve => {
                 if (!checkedAgainstDatabase || fetch_db_each_scan) {
                     prevstate.files = [];
-                    db_connector.db.query(("SELECT * FROM " + table), (err, result, fields) => {
+                    db_connector.db.query(("SELECT * FROM " + table + " WHERE fs_file LIKE '" + dir + "%'"), (err, result, fields) => {
                         if (err) {
                             logger.log(mdnm, "ERROR", "Error connecting to database. The application will exit.");
                             throw err;
