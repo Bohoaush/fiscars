@@ -60,24 +60,20 @@ class FileScanner {
                 fs.readdir(dirname, {withFileTypes: true}, (err, filenames) => {
                     if (err) {
                         logger.log((mdnm), "ERROR", ("Failed to obtain directory listing at " + dirname + "\n" + err));
-                    }
-                    for (let prvfile of prevstate.files) {
-                        
-                    }
-                    for (let file of filenames) {
-                        if (file.isDirectory()) {
-                            subdirPromises.push(scanDir(dirname + file.name));
-                        } else {
-                            var filedata = {};
-                            filedata.name = (dirname + file.name);
-                            filedata.stat = fs.statSync(dirname + file.name);
-                            filedata.isInDb = false;
-                            currstate.files.push(filedata);
+                    } else {
+                        for (let file of filenames) {
+                            if (file.isDirectory()) {
+                                subdirPromises.push(scanDir(dirname + file.name));
+                            } else {
+                                var filedata = {};
+                                filedata.name = (dirname + file.name);
+                                filedata.stat = fs.statSync(dirname + file.name);
+                                filedata.isInDb = false;
+                                currstate.files.push(filedata);
+                            }
                         }
                     }
-                    Promise.all(subdirPromises).then(() => {
-                        resolve();
-                    });
+                    Promise.all(subdirPromises).then(() => resolve());
                 });
             });
         }
