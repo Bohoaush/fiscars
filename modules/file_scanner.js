@@ -32,7 +32,7 @@ class FileScanner {
                             dbfiledata.stat.ctime.setHours(dbfiledata.stat.ctime.getHours() - ((new Date().getTimezoneOffset())/60));
                             dbfiledata.stat.size = row.fs_size;
                             dbfiledata.updtmfordb = row.fs_update;
-                            dbfiledata.statefordb = row.fs_state;
+                            dbfiledata.statefordb = row.fs_status;
                             dbfiledata.versifordb = row.fs_version;
                             dbfiledata.isInDb = true;
                             prevstate.files.push(dbfiledata);
@@ -122,7 +122,7 @@ class FileScanner {
                     for (let adpend of pendingAdd) {
                         if (filetodb === adpend) {
                             currStat = false;
-                            pendingAdd.splice(pendingAdd.idnexOf(adpend), 1);
+                            pendingAdd.splice(pendingAdd.indexOf(adpend), 1);
                             logger.log(mdnm, "WARNING", ("File " + filetodb.name + "was deleted before adding to database."));
                         }
                     }
