@@ -27,7 +27,8 @@ function readSettings() {
                 var fixIncompleteConfig = [
                     module.exports.settings.db_tbl,
                     module.exports.settings.scheduler_intervals_sec,
-                    module.exports.settings.update_db_wait_sec
+                    module.exports.settings.update_db_wait_sec,
+                    module.exports.settings.fetch_db_each_scan
                 ]
                 for (let fixIncompleteConfigPart of fixIncompleteConfig) {
                     for (let i = fixIncompleteConfigPart.length; i < module.exports.settings.scan_dirs.length; i++) {
@@ -54,11 +55,12 @@ function createSettings() {
             db_usr: "",
             db_pwd: "",
             scan_dirs: ["."],
-            api_enabled: false,
-            api_port: 8086,
+            fetch_db_each_scan: [true],
             scheduler_enabled: true,
             scheduler_intervals_sec: [300],
-            update_db_wait_sec: [90]
+            update_db_wait_sec: [90],
+            api_enabled: false,
+            api_port: 8086
         }
         writeSettingsToFile().then( () => {
             logger.log(mdnm, "WARNING", "Created new settings file");

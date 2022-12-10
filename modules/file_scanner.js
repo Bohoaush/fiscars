@@ -6,7 +6,7 @@ const mdnm = "file_scanner";
 
 
 class FileScanner {
-    constructor(dir, table, dbupdwait) {
+    constructor(dir, table, dbupdwait, fetch_db_each_scan) {
         var prevstate = {files: []};
         var currstate;
         
@@ -17,7 +17,7 @@ class FileScanner {
         
         this.scanFiles = function() {
             return new Promise(resolve => {
-                if (!checkedAgainstDatabase) {
+                if (!checkedAgainstDatabase || fetch_db_each_scan) {
                     db_connector.db.query(("SELECT * FROM " + table), (err, result, fields) => {
                         if (err) {
                             logger.log(mdnm, "ERROR", "Error connecting to database. The application will exit.");
@@ -46,7 +46,7 @@ class FileScanner {
                 }
                 currstate = {files: []};
             }).then( () => {
-                scanDir(dir).then(dirname => {
+                scanDir(dir).then(() => {
                     comparePreviousWithCurrent();
                 });
             });
@@ -55,6 +55,7 @@ class FileScanner {
 
         function scanDir(dirname) {
             return new Promise(resolve => {
+                let subdirPromises = [];
                 dirname = (dirname + "/");
                 fs.readdir(dirname, {withFileTypes: true}, (err, filenames) => {
                     if (err) {
@@ -65,7 +66,7 @@ class FileScanner {
                     }
                     for (let file of filenames) {
                         if (file.isDirectory()) {
-                            scanDir(dirname + file.name);
+                            subdirPromises.push(scanDir(dirname + file.name));
                         } else {
                             var filedata = {};
                             filedata.name = (dirname + file.name);
@@ -74,7 +75,9 @@ class FileScanner {
                             currstate.files.push(filedata);
                         }
                     }
-                    resolve(dirname);
+                    Promise.all(subdirPromises).then(() => {
+                        resolve();
+                    });
                 });
             });
         }

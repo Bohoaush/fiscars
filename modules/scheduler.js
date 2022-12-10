@@ -12,7 +12,8 @@ function startAll() {
             new scanner.FileScanner(
                 dir, 
                 config.settings.db_tbl[config.settings.scan_dirs.indexOf(dir)],
-                config.settings.update_db_wait_sec[config.settings.scan_dirs.indexOf(dir)]
+                config.settings.update_db_wait_sec[config.settings.scan_dirs.indexOf(dir)],
+                config.settings.fetch_db_each_scan[config.settings.scan_dirs.indexOf(dir)]
             )
         );
         logger.log(mdnm, "INFO", ("Initialized file scanner for " + dir));
@@ -41,7 +42,7 @@ module.exports = {
 
 function start(filescanner, seconds) {
     setInterval(filescanner.scanFiles, (seconds * 1000));
-    logger.log(mdnm, "INFO", ("Scheduled file scanner " + scanners.indexOf(filescanner) + " every " + seconds));
+    logger.log(mdnm, "INFO", ("Scheduled file scanner " + scanners.indexOf(filescanner) + " every " + seconds + "s"));
 }
 
 function stop(filescanner) {
