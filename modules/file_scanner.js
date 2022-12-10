@@ -14,43 +14,51 @@ class FileScanner {
         var pendingAdd = [];
         
         var checkedAgainstDatabase = false;
+        var checkRunningLock = false;
         
         this.scanFiles = function() {
-            return new Promise(resolve => {
-                if (!checkedAgainstDatabase || fetch_db_each_scan) {
-                    prevstate.files = [];
-                    db_connector.db.query(("SELECT * FROM " + table + " WHERE fs_file LIKE '" + dir + "%'"), (err, result, fields) => {
-                        if (err) {
-                            logger.log(mdnm, "ERROR", "Error connecting to database. The application will exit.");
-                            throw err;
-                        }
-                        for (let row of result) {
-                            var dbfiledata = {};
-                            dbfiledata.name = row.fs_file;
-                            dbfiledata.stat = {};
-                            dbfiledata.stat.ctimeMs = row.fs_ctimems;
-                            dbfiledata.stat.ctime = row.fs_ctime;
-                            dbfiledata.stat.ctime.setHours(dbfiledata.stat.ctime.getHours() - ((new Date().getTimezoneOffset())/60));
-                            dbfiledata.stat.size = row.fs_size;
-                            dbfiledata.updtmfordb = row.fs_update;
-                            dbfiledata.statefordb = row.fs_status;
-                            dbfiledata.versifordb = row.fs_version;
-                            dbfiledata.isInDb = true;
-                            prevstate.files.push(dbfiledata);
-                        }
-                        checkedAgainstDatabase = true;
+            if (!checkRunningLock) {
+                checkRunningLock = true;
+                return new Promise(resolve => {
+                    if (!checkedAgainstDatabase || fetch_db_each_scan) {
+                        prevstate.files = [];
+                        db_connector.db.query(("SELECT * FROM " + table + " WHERE fs_file LIKE '" + dir + "%'"), (err, result, fields) => {
+                            if (err) {
+                                reject(err);
+                            }
+                            for (let row of result) {
+                                var dbfiledata = {};
+                                dbfiledata.name = row.fs_file;
+                                dbfiledata.stat = {};
+                                dbfiledata.stat.ctimeMs = row.fs_ctimems;
+                                dbfiledata.stat.ctime = row.fs_ctime;
+                                dbfiledata.stat.ctime.setHours(dbfiledata.stat.ctime.getHours() - ((new Date().getTimezoneOffset())/60));
+                                dbfiledata.stat.size = row.fs_size;
+                                dbfiledata.updtmfordb = row.fs_update;
+                                dbfiledata.statefordb = row.fs_status;
+                                dbfiledata.versifordb = row.fs_version;
+                                dbfiledata.isInDb = true;
+                                prevstate.files.push(dbfiledata);
+                            }
+                            checkedAgainstDatabase = true;
+                            resolve();
+                        });
+                    } else {
+                        prevstate = currstate;
                         resolve();
+                    }
+                    currstate = {files: []};
+                }).then( () => {
+                    scanDir(dir).then(() => {
+                        checkRunningLock = false;
+                        comparePreviousWithCurrent();
                     });
-                } else {
-                    prevstate = currstate;
-                    resolve();
-                }
-                currstate = {files: []};
-            }).then( () => {
-                scanDir(dir).then(() => {
-                    comparePreviousWithCurrent();
+                }).catch(err => {
+                    logger.log(mdnm, "ERROR", "Error fetching " + table + " database table: " + err);
                 });
-            });
+            } else {
+                logger.log(mdnm, "WARNING", "Not starting new scan, previous scan is still running. Consider increasing scan interval");
+            }
         }
 
 
@@ -115,9 +123,9 @@ class FileScanner {
             }
             for (let currfile of currstate.files) {
                 if (!currfile.isInDb) {
-                        currfile.statefordb = "new";
-                        currfile.versifordb = 1;
-                        pendingAdd.push(currfile);
+                    currfile.statefordb = "new";
+                    currfile.versifordb = 1;
+                    pendingAdd.push(currfile);
                 }
             }
             setTimeout(updateDb, (dbupdwait*1000));
