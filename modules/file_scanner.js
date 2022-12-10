@@ -47,9 +47,7 @@ class FileScanner {
                 currstate = {files: []};
             }).then( () => {
                 scanDir(dir).then(dirname => {
-                    if (dirname === (dir + "/")) {
-                        comparePreviousWithCurrent();
-                    }
+                    comparePreviousWithCurrent();
                 });
             });
         }
