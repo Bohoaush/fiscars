@@ -18,6 +18,7 @@ class FileScanner {
         this.scanFiles = function() {
             return new Promise(resolve => {
                 if (!checkedAgainstDatabase || fetch_db_each_scan) {
+                    prevstate.files = [];
                     db_connector.db.query(("SELECT * FROM " + table), (err, result, fields) => {
                         if (err) {
                             logger.log(mdnm, "ERROR", "Error connecting to database. The application will exit.");
@@ -79,6 +80,13 @@ class FileScanner {
         }
         
         function comparePreviousWithCurrent() {
+            if (fetch_db_each_scan) {
+                for (let pendadd of pendingAdd) {
+                    pendadd.isInDb = true; // Not actually true - workaround...
+                    prevstate.files.push(pendadd);
+                    logger.log(mdnm, "WARNING", "File " + pendadd.name + " is still pending add to database. Consider increasing scan interval.");
+                }
+            } // Workaround to not add duplicate entries to pending if fetching database each check.
             for (let prvfile of prevstate.files) {
                 prvfile.isInCurr = false;
                 for (let currfile of currstate.files) {
@@ -107,9 +115,9 @@ class FileScanner {
             }
             for (let currfile of currstate.files) {
                 if (!currfile.isInDb) {
-                    currfile.statefordb = "new";
-                    currfile.versifordb = 1;
-                    pendingAdd.push(currfile);
+                        currfile.statefordb = "new";
+                        currfile.versifordb = 1;
+                        pendingAdd.push(currfile);
                 }
             }
             setTimeout(updateDb, (dbupdwait*1000));
