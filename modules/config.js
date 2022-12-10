@@ -62,7 +62,7 @@ function createSettings(shouldWriteToFile) {
             api_enabled: false,
             api_port: 8086
         }
-        if ((!fs.existsSnyc("./settings.json")) || shouldWriteToFile) {
+        if ((!fs.existsSync("./settings.json")) || shouldWriteToFile) {
             writeSettingsToFile().then( () => {
                 logger.log(mdnm, "WARNING", "Created new settings file");
                 resolve();
