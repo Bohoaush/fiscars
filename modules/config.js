@@ -24,8 +24,10 @@ function readSettings() {
                     module.exports.settings.scan_dirs[i] = module.exports.settings.scan_dirs[i].replace(/\/$/, "");
                 }
                 
+                // I think this is completely wrong and needs revisiting
                 var fixIncompleteConfig = [
                     module.exports.settings.db_tbl,
+                    module.exports.settings.ignr_file,
                     module.exports.settings.scheduler_intervals_sec,
                     module.exports.settings.update_db_wait_sec,
                     module.exports.settings.fetch_db_each_scan
@@ -55,6 +57,7 @@ function createSettings(shouldWriteToFile) {
             db_usr: "",
             db_pwd: "",
             scan_dirs: ["."],
+            ignr_file: [["main.js"]],
             fetch_db_each_scan: [true],
             scheduler_enabled: true,
             scheduler_intervals_sec: [300],

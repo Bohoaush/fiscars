@@ -13,7 +13,8 @@ function startAll() {
                 dir, 
                 config.settings.db_tbl[config.settings.scan_dirs.indexOf(dir)],
                 config.settings.update_db_wait_sec[config.settings.scan_dirs.indexOf(dir)],
-                config.settings.fetch_db_each_scan[config.settings.scan_dirs.indexOf(dir)]
+                config.settings.fetch_db_each_scan[config.settings.scan_dirs.indexOf(dir)],
+                config.settings.ignr_file[config.settings.scan_dirs.indexOf(dir)]
             )
         );
         logger.log(mdnm, "INFO", ("Initialized file scanner for " + dir));
